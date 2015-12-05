@@ -1,0 +1,20 @@
+#!/bin/bash
+#author:        Nagarjun Bollam
+#notes:         This utility adds notes to git branch you are working on
+
+branchNotesDir=.git/branchnotes
+mkdir -p $branchNotesDir
+#TODO: Suppress errors when a branch is not found
+currBranch=`git rev-parse --abbrev-ref --symbolic-full-name @{u}`
+branchFound=$?
+if [ $branchFound == 0 ]
+then
+	branchNoteFile=`echo $currBranch | sed s^\/^_^`
+	touch $branchNotesDir/$branchNoteFile
+	for var in "$@"	
+	do
+        	echo $var >> $branchNotesDir/$branchNoteFile
+	done
+else
+        echo "Branch not found. Run \"git branch\" to know the status."
+fi

@@ -1,0 +1,17 @@
+#!/bin/bash
+#author:        Nagarjun Bollam
+#notes:         This utility resets notes for the git branch you are working on
+
+branchNotesDir=.git/branchnotes
+mkdir -p $branchNotesDir
+#TODO: Suppress errors when a branch is not found
+currBranch=`git rev-parse --abbrev-ref --symbolic-full-name @{u}`
+branchFound=$?
+if [ $branchFound == 0 ]
+then
+        branchNoteFile=`echo $currBranch | sed s^\/^_^`
+        touch $branchNotesDir/$branchNoteFile
+        >$branchNotesDir/$branchNoteFile
+else
+        echo "Branch not found. Run \"git branch\" to know the status."
+fi

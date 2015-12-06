@@ -1,20 +1,65 @@
 #!/bin/bash
 #author:        Nagarjun Bollam
 #notes:         This utility adds notes to git branch you are working on
+#acronyms:	Local Branch (LB), Local Branch With Remote Reference (LBRR), Remote Branch (RB)
+
+#Uncomment below flag to enable debugging
+#set -x
+
+rawCurrBranch=`git branch`
+branchFound=$?
+#TODO: Suppress errors when a branch is not found
+#When the branch is in detached head state, do not proceed further
+if [[ $branchFound != 0 || $rawCurrBranch == *"detached"* ]]
+then
+	echo "Branch not found. Run \"git branch\" to know the status."
+	exit 0
+fi
 
 branchNotesDir=.git/branchnotes
 mkdir -p $branchNotesDir
-#TODO: Suppress errors when a branch is not found
-currBranch=`git rev-parse --abbrev-ref --symbolic-full-name @{u}`
-branchFound=$?
-if [ $branchFound == 0 ]
+
+#rawCurrBranch starts with a *, print is with quotes before you awk it. Else, * blows into listing contents of your dir
+currBranch=`echo "$rawCurrBranch" | awk -F" " '{print $2}'`
+branchCount=`git branch -a | grep -w $currBranch | wc -l`
+
+#Notes file format 
+##LB: 		<branchName>
+##LBRR: 	<remoteAlias_branchName>
+
+#if the count is 1, it is a local branch. The count will be atleast 2 if there is a remote reference
+if [ $branchCount == 1 ]
 then
-	branchNoteFile=`echo $currBranch | sed s^\/^_^`
-	touch $branchNotesDir/$branchNoteFile
-	for var in "$@"	
-	do
-        	echo $var >> $branchNotesDir/$branchNoteFile
-	done
+	touch $branchNotesDir/$currBranch
+	for var in "$@"
+        do
+                echo $var >> $branchNotesDir/$currBranch
+        done
 else
-        echo "Branch not found. Run \"git branch\" to know the status."
+	#TODO: Suppress errors when a branch is not found
+	currBranchWithRemote=`git rev-parse --abbrev-ref --symbolic-full-name @{u}`
+	branchFound=$?
+	if [ $branchFound == 0 ]
+	then
+		branchNoteFile=`echo $currBranchWithRemote | sed s^\/^_^`
+		touch $branchNotesDir/$branchNoteFile
+		for var in "$@"	
+		do
+	        	echo $var >> $branchNotesDir/$branchNoteFile
+		done
+		#If you have a notes file for a LB, but also now find an LBRR; it means the branch has been pushed to a remote and it is no more a LB
+		#In this case, create a new LBRR notes, push LB notes content to it and delete LB notes 
+		if [ -f $branchNotesDir/$currBranch ]
+		then
+			`cat $branchNotesDir/$currBranch` >> $branchNotesDir/$branchNoteFile 	
+			 #rm -rf $branchNotesDir/$currBranch
+		fi
+	else
+	        echo "Branch not found. Are you in a detached state? Run \"git branch\" to know the status."
+		exit 0
+	fi
 fi
+
+
+
+
